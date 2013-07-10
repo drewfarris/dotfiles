@@ -1,6 +1,6 @@
 [user]
-  name = Michael Wall
-  email = mjwall@gmail.com
+  name = Drew Farris
+  email = drew.farris@gmail.com
 [alias]
   st = status -sb
   ci = commit
@@ -25,4 +25,4 @@
 [push]
   default = tracking
 [credential]
-	helper = osxkeychain
+  helper = osxkeychain
