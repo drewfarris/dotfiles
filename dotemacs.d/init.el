@@ -1,13 +1,10 @@
-;; Emacs config outline
-;; - Defaults
-;; - Display
-;; - Platform specific
-;; - Navigation
-;; - Editing and formatting
-;; - Utility functions
-;; - Language specific
+;;; package --- ~/.emacs.d/init.el for mjwall
 
-;;----------------------------------------------------------------------------
+;;; Commentary:
+;;; This is my Emacs init.el file
+
+;;; Code:
+
 ;; - Defaults
 ;;----------------------------------------------------------------------------
 
@@ -17,13 +14,15 @@
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 
 ;; Make elisp more civilized
-(require 'cl)
+(eval-when-compile (require 'cl))
 
 ;; default load path
+(defvar dotfiles-dir)
 (setq dotfiles-dir (file-name-directory
                     (or (buffer-file-name) load-file-name)))
 
 ;; Set path to dependencies
+(defvar site-lisp-dir)
 (setq site-lisp-dir
       (expand-file-name "site-lisp" user-emacs-directory))
 
@@ -36,6 +35,7 @@
   "Go...")
 
 ;; default variables
+(defvar uniquify-buffer-name-style)
 (setq visible-bell nil
       ring-bell-function 'ignore
       echo-keystrokes 0.1
@@ -79,18 +79,11 @@
 ;; when you switch git branches
 (global-auto-revert-mode 1)
 
-;; setup the paths, this was useful when I was using ansi-term
-(defun set-exec-path-from-shell-PATH ()
-  (let ((path-from-shell (shell-command-to-string "$SHELL -i -c 'echo
- $PATH'")))
-    (setenv "PATH" path-from-shell)
-    (setq exec-path (split-string path-from-shell path-separator))))
-(if window-system (set-exec-path-from-shell-PATH))
-
 ;; no line numbers unless I say so, but set the format for when I do,
 ;; coding-hooks will provide line numbers for all code
 (global-linum-mode 0)
-(setq linum-format "%4d ")
+(eval-after-load "linum"
+  '(setq linum-format "%4d "))
 
 ;; no mail
 (global-unset-key (kbd "C-x m"))
@@ -106,7 +99,9 @@
 ;; On-demand installation of packages
 ;; may have to run package-refresh-contents
 (defun require-package (package &optional min-version no-refresh)
-  "Ask elpa to install given PACKAGE."
+  "Ask elpa to install given PACKAGE.
+MIN-VERSION optional
+NO-REFRESH optional"
   (if (package-installed-p package min-version)
       t
     (if (or (assoc package package-archive-contents) no-refresh)
@@ -115,12 +110,11 @@
         (package-refresh-contents)
         (require-package package min-version t)))))
 
+(add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/"))
 (add-to-list 'package-archives '("tromey" . "http://tromey.com/elpa/"))
+(add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/") t)
 ;; not sure about marmalade yet
-;;(add-to-list 'package-archives
-;;  '("marmalade" . "http://marmalade-repo.org/packages/"))
-(add-to-list 'package-archives
-             '("melpa" . "http://melpa.milkbox.net/packages/") t)
+;;(add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
 (package-initialize)
 
 ;;----------------------------------------------------------------------------
@@ -136,7 +130,7 @@
 
 ;; Change Font size, only works in GUI
 (global-set-key (kbd "C-+") 'text-scale-increase)
-(global-set-key (kbd "C--") 'text-scale-decrease)
+(global-set-key (kbd "C-_") 'text-scale-decrease)
 
 ;; bind some window resizing
 (global-set-key (kbd "C-s-<left>") 'shrink-window-horizontally)
@@ -144,39 +138,43 @@
 (global-set-key (kbd "C-s-<down>") 'shrink-window)
 (global-set-key (kbd "C-s-<up>") 'enlarge-window)
 
-;; setup formatting with not running in terminal
-;; (when window-system
-;;   (setq frame-title-format '(buffer-file-name "%f" ("%b")))
-;;   (tooltip-mode -1)
-;;   (mouse-wheel-mode t)
-;;   (blink-cursor-mode -1)
-;;   (menu-bar-mode 1) ; turn on the menu bar in the gui
-;; )
-
 ;; fight modeline clutter, need to eval-after-load for
 ;; whatever you want diminished
 (require-package 'diminish)
 
 ;; themes
 (require-package 'solarized-theme)
+(require-package 'zenburn-theme)
+(require-package 'underwater-theme)
+(require-package 'ample-theme)
 ;; https://github.com/chriskempson/tomorrow-theme/tree/master/GNU%20Emacs
 (add-to-list 'custom-theme-load-path (concat dotfiles-dir "themes/tomorrow-theme"))
 ;; default theme
-;(load-theme 'solarized-dark t)
-(load-theme 'tomorrow-night-bright t)
+;;(load-theme 'underwater t)
+;;(load-theme 'solarized-dark t)
+;;(load-theme 'tomorrow-night-bright t)
+;;(load-theme 'ample t)
+(require-package 'ample-zen-theme)
+(load-theme 'ample-zen t)
 
 ;; fix cursor on some linux,
 ;; see https://github.com/chriskempson/tomorrow-theme/issues/42
-(add-hook 'window-setup-hook '(lambda () (set-cursor-color "#778899")))
-(add-hook 'after-make-frame-functions '(lambda (f) (with-selected-frame f (set-cursor-color "#778899"))))
+;; (add-hook 'window-setup-hook '(lambda () (set-cursor-color "#778899")))
+;; (add-hook 'after-make-frame-functions '(lambda (f) (with-selected-frame f (set-cursor-color "#778899"))))
 
 ;; run only in gui, doesn't play well with daemon
 (if window-system
     (setq use-file-dialog nil)
     (setq use-dialog-box nil))
 
+;; show menu-bar-mode in GUI
+(if (display-graphic-p)
+    (menu-bar-mode 1)
+  (menu-bar-mode -1))
+
 ;; function to change opacity
 (defun adjust-opacity (frame incr)
+  "Function to change the opacity of the FRAME by the given INCR."
   (let* ((oldalpha (or (frame-parameter frame 'alpha) 100))
          (newalpha (+ incr oldalpha)))
     (when (and (<= frame-alpha-lower-limit newalpha) (>= 100 newalpha))
@@ -187,20 +185,15 @@
 (global-set-key (kbd "C-9") '(lambda () (interactive) (adjust-opacity nil 5)))
 (global-set-key (kbd "C-0") '(lambda () (interactive) (modify-frame-parameters nil `((alpha . 100)))))
 
-;; modeline styling, https://github.com/jonathanchu/emacs-powerline
-(require 'powerline)
-(setq powerline-color1 "grey22")
-(setq powerline-color2 "grey40")
-(set-face-attribute 'mode-line nil
-                    :background "SteelBlue4"
-                    :box nil)
-(setq powerline-arrow-shape 'arrow)
-
 ;;----------------------------------------------------------------------------
 ;; - Platform specific
 ;;----------------------------------------------------------------------------
 
 ;; set variables based on system type
+(defvar *is-a-mac*)
+(defvar *is-carbon-emacs*)
+(defvar *is-cocoa-emacs*)
+(defvar *is-gnu-linux*)
 (setq *is-a-mac* (eq system-type 'darwin))
 (setq *is-carbon-emacs* (and *is-a-mac* (eq window-system 'mac)))
 (setq *is-cocoa-emacs* (and *is-a-mac* (eq window-system 'ns)))
@@ -255,22 +248,6 @@
       scroll-down-aggressively 0        ;; ... annoying
 )
 
-;; Fix shift+up when running emacs in terminal
-;; see http://lists.gnu.org/archive/html/help-gnu-emacs/2011-05/msg00211.html
-;; and http://emacswiki.org/emacs/ElispCookbook#toc4
-;; (defun string/starts-with (s arg)
-;;         "returns non-nil if string S starts with ARG.  Else nil."
-;;         (cond ((>= (length s) (length arg))
-;;             (string-equal (substring s 0 (length arg)) arg))
-;;                        (t nil)))
-
-;; (if (string/starts-with (tty-type) "xterm")
-;;     (progn
-;;       (message "fixing xterm")))
-;;(define-key input-decode-map "\e[1;2A" [S-up])
-(defadvice terminal-init-xterm (after select-shift-up activate)
-      (define-key input-decode-map "\e[1;2A" [S-up]))
-
 
 ; movement keys C-<left> etc don't seem to work in terminal and winner-mode
 (global-set-key (kbd "C-x <left>") 'windmove-left)
@@ -278,22 +255,22 @@
 (global-set-key (kbd "C-x <down>") 'windmove-down)
 (global-set-key (kbd "C-x <up>") 'windmove-up)
 
-;; ido-jump-to-window was taken from http://www.emacswiki.org/emacs/WindowNavigation
-
 (defun my/swap (l)
+  "Swap function use in ido-jump-to-window.  Take first element of L."
   (if (cdr l)
       (cons (cadr l) (cons (car l) (cddr l)))
     l))
 (defun ido-jump-to-window ()
+  "This ido-jump-to-window function taken from http://www.emacswiki.org/emacs/WindowNavigation."
   (interactive)
   (let* ((visible-buffers
-          (my/swap (mapcar '(lambda (window) (buffer-name (window-buffer window))) (window-list))))
+          (my/swap (mapcar #'(lambda (window) (buffer-name (window-buffer window))) (window-list))))
          (buffer-name (ido-completing-read "Window: " visible-buffers))
          window-of-buffer)
     (if (not (member buffer-name visible-buffers))
         (error "'%s' does not have a visible window" buffer-name)
       (setq window-of-buffer
-            (delq nil (mapcar '(lambda (window)
+            (delq nil (mapcar #'(lambda (window)
                                  (if (equal buffer-name (buffer-name (window-buffer window)))
                                      window
                                    nil))
@@ -302,25 +279,27 @@
 (global-set-key (kbd "\C-x v") 'ido-jump-to-window)
 (global-set-key (kbd "\C-x C-v") 'ido-jump-to-window)
 
+;; make Alt-` go to other frame as expected, like s-`
+(global-set-key (kbd "M-`") 'other-frame)
+
 ;; keybinding to bring up ibuffer
 (when (fboundp 'ibuffer)
   (global-set-key (kbd "C-x C-b") 'ibuffer))
 
-;; ido-mode is like magic pixie dust!
-;; use 'buffer rather than t to use only buffer switching
-(ido-mode t)
-
 ;; Use C-f during file selection to switch to regular find-file
-(ido-everywhere t)
+
 (when (> emacs-major-version 21)
   (ido-mode t)
+  (ido-everywhere t)
   (setq ido-enable-prefix nil
         ido-enable-flex-matching t
 ;        ido-create-new-buffer 'always
         ido-use-filename-at-point 'guess ;nil
         ido-auto-merge-work-directories-length 0
+        ido-default-file-method 'selected-window
         ido-default-buffer-method 'selected-window
         ido-max-prospects 10
+        ido-max-directory-size 100000
         ido-ignore-buffers
         '("\\` " "^\\*ESS\\*" "^\\*Messages\\*" "^\\*Help\\*" "^\\*Buffer"
           "^\\*.*Completions\\*$" "^\\*Ediff" "^\\*tramp" "^\\*cvs-"
@@ -339,6 +318,10 @@
   (set (make-local-variable 'truncate-lines) nil))
 (add-hook 'ido-minibuffer-setup-hook 'ido-disable-line-trucation)
 
+; imenu with ido
+(require-package 'idomenu)
+(global-set-key (kbd "C-.") 'idomenu)
+
 ;; update keybindings so up and down move next with vertical results
 (add-hook 'ido-setup-hook
           (lambda ()
@@ -352,7 +335,8 @@
 
 ;; setup recentf mode
 (recentf-mode 1)
-(setq recentf-max-saved-items 100)
+(eval-after-load "recentf"
+  '(setq recentf-max-saved-items 100))
 
 ;; From http://github.com/superbobry/emacs/blob/master/rc/emacs-rc-defuns.el
 (defun recentf-ido-find-file ()
@@ -373,8 +357,8 @@
 (global-set-key "\C-\M-s" 'isearch-forward)
 (global-set-key "\C-\M-r" 'isearch-backward)
 
-;; function for isearch as regex
 (defun call-with-current-isearch-string-as-regex (f)
+  "Takes current selection as F and then search with isearch string."
   (let ((case-fold-search isearch-case-fold-search))
     (funcall f (if isearch-regexp isearch-string (regexp-quote isearch-string)))))
 
@@ -389,6 +373,15 @@
   (lambda ()
     (interactive)
     (call-with-current-isearch-string-as-regex 'all)))
+
+(eval-after-load "isearch"
+                 '(diminish 'isearch-mode))
+
+;; show counts of matchs in modeline
+(require-package 'anzu)
+(global-anzu-mode +1)
+(eval-after-load "anzu" '(setq anzu-search-threshold 1000))
+(eval-after-load "anzu" '(diminish 'anzu-mode))
 
 ;; Search back/forth for the symbol at point
 ;; See http://www.emacswiki.org/emacs/SearchAtPoint
@@ -422,9 +415,15 @@
 (global-set-key (kbd "C-c y") 'bury-buffer)
 (global-set-key (kbd "C-c r") 'revert-buffer)
 
-;; ECB, not sure how to use it yet
-(require-package 'ecb)
+;; CEDET, looks like 2.0 is included in Emacs 24.3
+;; (global-ede-mode 1)                      ; Enable the Project management system
+;; (semantic-load-enable-code-helpers)      ; Enable prototype help and smart completion
+;; (global-srecode-minor-mode 1)            ; Enable template insertion menu
 
+;; ECB, not sure how to use it yet
+;; (require-package 'ecb)
+
+(require-package 'window-numbering) ;;enabled at bottom
 ;;----------------------------------------------------------------------------
 ;; - Editing and formatting
 ;;----------------------------------------------------------------------------
@@ -438,10 +437,12 @@
  mouse-yank-at-point t
  ;; end files with a newline
  require-final-newline t
- ;; set ispell to use brew installed aspell, see
- ;; http://sunny.in.th/2010/05/08/emacs-enabling-flyspell-mode-gave-an-error.html
- ispell-program-name "aspell"
-)
+ )
+
+(eval-after-load "ispell-mode"
+  ;; set ispell to use brew installed aspell, see
+  ;; http://sunny.in.th/2010/05/08/emacs-enabling-flyspell-mode-gave-an-error.html
+  '(setq ispell-program-name "aspell"))
 
 ;; make backspace work as expected
 (normal-erase-is-backspace-mode 1)
@@ -507,7 +508,7 @@
 ;; grabbed from http://blog.tuxicity.se/elisp/emacs/2010/03/11/duplicate-current-line-or-region-in-emacs.html
 (defun duplicate-current-line-or-region (arg)
   "Duplicates the current line or region ARG times.
-If there's no region, the current line will be duplicated. However, if
+If there's no region, the current line will be duplicated.  However, if
 there's a region, all lines that region covers will be duplicated."
   (interactive "p")
   (let (beg end (origin (point)))
@@ -545,7 +546,7 @@ there's a region, all lines that region covers will be duplicated."
 
 ;; more of a private function for the next 2
 (defun move-line (arg)
-  "Moves line up or down, depending on the arg."
+  "Move line up or down, depending on the ARG."
   (let ((col (current-column)))
     (save-excursion
       (forward-line)
@@ -553,14 +554,14 @@ there's a region, all lines that region covers will be duplicated."
     (if (eql arg 1) (forward-line))
     (move-to-column col)))
 
-;; move current line up 1
 (defun move-line-up ()
+  "Move current line up one."
   (interactive)
   (move-line -1))
 (global-set-key (kbd "M-<up>") 'move-line-up)
 
-;; move current line down 1
 (defun move-line-down ()
+  "Move current line down one."
   (interactive)
   (move-line 1))
 (global-set-key (kbd "M-<down>") 'move-line-down)
@@ -580,6 +581,7 @@ there's a region, all lines that region covers will be duplicated."
 ;;(delete 'try-expand-line hippie-expand-try-functions-list)
 ;;(delete 'try-expand-list hippie-expand-try-functions-list)
 (defun try-complete-abbrev (old)
+  "Define a hippie complete function using abbrev using OLD."
    (if (expand-abbrev) t nil))
 
 (setq hippie-expand-try-functions-list
@@ -592,9 +594,28 @@ there's a region, all lines that region covers will be duplicated."
 ;;hippie expand binding
 (global-set-key [C-tab] 'hippie-expand)
 
-;; autopair quotes and parentheses
-(require-package 'autopair)
-(setq autopair-autowrap t)
+(require-package 'yasnippet)
+(yas-global-mode 1)
+(eval-after-load "yasnippet"
+  '(progn
+    (setq yas/root-directory (concat dotfiles-dir "snippets"))
+    (yas/load-directory yas/root-directory)
+    (diminish 'yas-minor-mode)))
+
+;;autocomplete
+(require-package 'auto-complete)
+(require 'auto-complete-config)
+;;(add-to-list 'ac-dictionary-directories "~ / .emacs.d / ac-dict")
+(ac-config-default)
+
+(define-key ac-complete-mode-map "\C-n" 'ac-next)
+(define-key ac-complete-mode-map "\C-p" 'ac-previous)
+(setq ac-auto-start nil)
+(global-set-key "\M-/" 'ac-start)
+(define-key ac-complete-mode-map "\M-/" 'ac-stop)
+(eval-after-load "auto-complete"
+  '(diminish 'auto-complete-mode "ac"))
+
 
 ;; supercharge undo/redo
 (require-package 'undo-tree)
@@ -605,10 +626,25 @@ there's a region, all lines that region covers will be duplicated."
 
 (require-package 'expand-region)
 (global-set-key (kbd "C-=") 'er/expand-region)
+(global-set-key (kbd "C--") 'er/contract-region)
 
 ;;----------------------------------------------------------------------------
 ;; - Utility functions
 ;;----------------------------------------------------------------------------
+
+;; reload init.el
+;; can also open the file and call eval-buffer
+(defun reload-init.el ()
+  (interactive)
+  (load-file (concat user-emacs-directory "init.el")))
+
+(defun pop-off-buffer ()
+  "Make a new frame with the current buffer, and bury that buffer on the old frame."
+  (interactive)
+  (bury-buffer)
+  (make-frame)
+  (unbury-buffer)
+  (message"new frame created"))
 
 ;; Insert date string
 (defun insert-date-string ()
@@ -618,7 +654,7 @@ there's a region, all lines that region covers will be duplicated."
 
 ;; delete all buffers except scratch
 (defun clean-slate ()
-    "Kills all buffers except *scratch*"
+    "Kill all buffers except *scratch*."
     (interactive)
     (let ((buffers (buffer-list)) (safe '("*scratch*")))
       (while buffers
@@ -667,27 +703,108 @@ there's a region, all lines that region covers will be duplicated."
   (interactive)
   (message (buffer-file-name)))
 
-;; dired+
-;;(require-package 'dired+)
-;;(toggle-diredp-find-file-reuse-dir 1)
-;;(setq dired-recursive-deletes 'top)
-;;(define-key dired-mode-map [mouse-2] 'dired-find-file)
-;; so 'a' in dired works
 (put 'dired-find-alternate-file 'disabled nil)
 
+(autoload 'dirtree "dirtree" "Add directory to tree view" t)
 
 ;; Git stuff
 (require-package 'magit)
+(global-set-key (kbd "C-x g") 'magit-status)
 
-;; When I used git from the terminal and GIT_EDITOR=et, I need to close
-;; the commit message when I am done.  C-x # is the command, which runs
-;; server-edit.  But I do that so often, I want an easier key combo
-;;(global-set-key "\C-c\C-w" 'server-edit)
+;; next section from https://github.com/cjohansen/.emacs.d/blob/master/setup-magit.el
+(require-package 'magit-svn)
+
+;; Load git configurations
+;; For instance, to run magit-svn-mode in a project, do:
+;;
+;;     git config --add magit.extension svn
+;;
+(add-hook 'magit-mode-hook 'magit-load-config-extensions)
+
+;; C-x C-k to kill file on line
+
+(defun magit-kill-file-on-line ()
+  "Show file on current magit line and prompt for deletion."
+  (interactive)
+  (magit-visit-item)
+  (delete-current-buffer-file)
+  (magit-refresh))
+
+(eval-after-load "magit"
+  '(define-key magit-status-mode-map (kbd "C-x C-k") 'magit-kill-file-on-line))
+
+;; full screen magit-status
+
+(defadvice magit-status (around magit-fullscreen activate)
+  "Setup advice for magit status iwth AROUND, MAGIT-FULLSCREEN and ACTIVATE so it can be put back on quit."
+  (window-configuration-to-register :magit-fullscreen)
+  ad-do-it
+  (delete-other-windows))
+
+(defun magit-quit-session ()
+  "Quit magit, restoring the previous window configuration and killing all magit buffers."
+  (interactive)
+  (mapc (lambda (b)
+          (if (string-prefix-p "*magit" (buffer-name b)) (kill-buffer b)))
+        (buffer-list))
+  ;;(kill-buffer)
+  (jump-to-register :magit-fullscreen))
+
+(eval-after-load "magit"
+  '(define-key magit-status-mode-map (kbd "q") 'magit-quit-session))
+
+;; full screen vc-annotate
+
+(defun vc-annotate-quit ()
+  "Restore the previous window configuration and kill the \"vc-annotate\" buffer."
+  (interactive)
+  (kill-buffer)
+  (jump-to-register :vc-annotate-fullscreen))
+
+(eval-after-load "vc-annotate"
+  '(progn
+     (defadvice vc-annotate (around fullscreen activate)
+       (window-configuration-to-register :vc-annotate-fullscreen)
+       ad-do-it
+       (delete-other-windows))
+
+     (define-key vc-annotate-mode-map (kbd "q") 'vc-annotate-quit)))
+
+;; ignore whitespace
+
+(eval-after-load "magit"
+  '(defun magit-toggle-whitespace ()
+    (interactive)
+    (if (member "-w" magit-diff-options)
+        (magit-dont-ignore-whitespace)
+      (magit-ignore-whitespace))))
+
+(eval-after-load "magit"
+  '(defun magit-ignore-whitespace ()
+    (interactive)
+    (add-to-list 'magit-diff-options "-w")
+    (magit-refresh)))
+
+(eval-after-load "magit"
+  '(defun magit-dont-ignore-whitespace ()
+    (interactive)
+    (setq magit-diff-options (remove "-w" magit-diff-options))
+    (magit-refresh)))
+
+(eval-after-load "magit"
+  '(define-key magit-status-mode-map (kbd "W") 'magit-toggle-whitespace))
+;; end stuff from https://github.com/cjohansen/.emacs.d/blob/master/setup-magit.el
+
+;; help me format better commit messages please
+;; https://github.com/lunaryorn/git-modes
+(require-package 'git-commit-mode)
 
 ;; load git stuff from git-core contrib/emacs into site-lisp,
 ;; see http://git.kernel.org/?p=git/git.git;a=tree;hb=HEAD;f=contrib/emacs
 ;; vc-git.el included with emacs now
+(add-to-list 'load-path (concat site-lisp-dir "/git.el"))
 (require 'git)
+
 (require-package 'mo-git-blame)
 ;;(require 'git-blame)
 
@@ -696,6 +813,16 @@ there's a region, all lines that region covers will be duplicated."
 (global-git-gutter-mode t)
 (global-set-key (kbd "C-x C-g") 'git-gutter:toggle)
 (eval-after-load "git-gutter" '(diminish 'git-gutter-mode))
+
+;; eshell
+;; call magit from eshell
+(defun eshell/magit ()
+  "Run magit status here."
+  (call-interactively #'magit-status)
+  nil)
+(setq eshell-cmpl-cycle-completions nil
+      eshell-save-history-on-exit t
+      eshell-cmpl-dir-ignore "\\`\\(\\.\\.?\\|CVS\\|\\.svn\\|\\.git\\)/\\'")
 
 ;; follow symlinks to real file
 (setq vc-follow-symlinks t)
@@ -706,29 +833,164 @@ there's a region, all lines that region covers will be duplicated."
 (setq projectile-enable-caching t)
 (diminish 'projectile-mode "proj")
 
-;; Deft, like notational velocity for Emacs
-(require-package 'deft)
-(setq deft-use-filename-as-title t)
-(setq deft-directory "~/.deft") ;default, but here if you need to change it
-(setq deft-auto-save-interval 30) ;defaults to 1 second, I type too slow
-
 ;; install ESS
 (require-package 'ess)
 
 ;; org-mode
-;; active Org-babel languages
+(require 'org)
+(global-set-key "\C-cl" 'org-store-link)
+(global-set-key "\C-cc" 'org-capture)
+(global-set-key "\C-ca" 'org-agenda)
+(global-set-key "\C-cb" 'org-iswitchb)
+
+(setq org-directory (concat (getenv "HOME") "/.org/"))
+(custom-set-variables
+    ;; org files
+ '(org-agenda-files (list
+                     (concat org-directory "work.org")
+                     (concat org-directory "personal.org")
+                     (concat org-directory "someday.org")
+                     (concat org-directory "inbox.org")
+                     (concat org-directory "journal.org")
+                     (concat org-directory "notes.org")))
+   ;; http://orgmode.org/manual/Closing-items.html
+ '(org-log-done 'time)
+ '(org-log-done 'note)
+   ;; http://orgmode.org/manual/Weekly_002fdaily-agenda.html
+ '(org-agenda-include-diary t)
+ '(org-default-notes-file (concat org-directory "inbox.org"))
+ '(org-capture-templates
+       '(("t" "Todo" entry (file+headline (concat org-directory "inbox.org") "Tasks")
+          "* TODO %?\n  %i\n  %a")
+         ("j" "Journal" entry (file+datetree (concat org-directory "journal.org"))
+          "* %?\nEntered on %U\n  %i\n  %a")
+         ("n" "Note" entry (file (concat org-directory "notes.org"))
+          "* %? :NOTE:\n%U\n%a\n")
+         ("s" "Someday" entry (file (concat org-directory "someday.org"))
+          "* %? :SOMEDAY:\n%U\n%a\n")))
+
+   ;; refiling (see http://doc.norang.ca/org-mode.html#Refiling)
+ '(org-refile-targets (quote ((nil :maxlevel . 9)
+                              (org-agenda-files :maxlevel . 9))))
+ '(org-refile-use-outline-path t)
+ '(org-outline-path-complete-in-steps nil)
+ '(org-refile-allow-creating-parent-nodes (quote confirm))
+ '(org-completion-use-ido t)
+ '(org-indirect-buffer-display 'current-window)
+   ;; agenda variables, see http://newartisans.com/2007/08/using-org-mode-as-a-day-planner/
+ '(org-agenda-ndays 7)
+ '(org-deadline-warning-days 14)
+ '(org-agenda-show-all-dates t)
+ '(org-agenda-skip-deadline-if-done t)
+ '(org-agenda-skip-scheduled-if-done t)
+ '(org-agenda-start-on-weekday nil)
+ '(org-reverse-note-order t)
+ '(org-agenda-custom-commands
+   '(
+     ("1" "Today's agenda" ((agenda "" ((org-agenda-ndays 1)))))
+     ("n" "Week agenda + TODOs" ((agenda "" )
+                                 (todo)))
+     ))
+ )
+
+;;;; Refile settings
+; Exclude DONE state tasks from refile targets
+;; (defun bh/verify-refile-target ()
+;;   "Exclude todo keywords with a done state from refile targets"
+;;   (not (member (nth 2 (org-heading-components)) org-done-keywords)))
+
+;; (setq org-refile-target-verify-function 'bh/verify-refile-target)
+
+;; active Org-babel languages, particularly for PlantUML
 (setq org-support-shift-select t)
 (org-babel-do-load-languages
  'org-babel-load-languages
  '(;; other Babel languages
    (plantuml . t)))
-
 (setq org-plantuml-jar-path
       (expand-file-name (concat user-emacs-directory "/site-lisp/plantuml.jar")))
 
-;; multi-term
-;;(require-package 'multi-term)
+(defun sync-org-files ()
+  "Run a bash script located in org-directory to sync org files via git."
+  (interactive)
+  (org-save-all-org-buffers)
+  (message "Syncing org files")
+  (with-output-to-temp-buffer "*org-git-sync*"
+    (shell-command (concat org-directory "org-git-sync") "*org-git-sync*")
+    (pop-to-buffer "*org-git-sync*"))
+  (message "Done syncing org files"))
 
+
+;; Deft, like notational velocity for Emacs
+;; I prefer more free flowing notes that get into my agenda
+(require-package 'deft)
+(custom-set-variables
+ '(deft-directory (concat org-directory  "deft"))
+ '(deft-use-filename-as-title t)
+ '(deft-extension "org")
+ '(deft-text-mode 'org-mode)
+ ;defaults to 1 second, I type too slow
+ '(deft-auto-save-interval 30))
+
+(require 'tramp-term)
+
+;; just give some indication, maybe this should be in the modeline
+;; but I don't know how to do that
+(defun my-term-line-mode ()
+    "Create message on entering term line mode."
+  (interactive)
+  (term-line-mode)
+  (message "entering term-line-mode"))
+(defun my-term-char-mode ()
+  "Create message on entering term char mode."
+  (interactive)
+  (term-char-mode)
+  (message "entering term-char-mode"))
+
+;; these don't appear to be in term, so copied from multi-term
+(defun my-term-send-backward-word ()
+  "Move backward word in term mode."
+  (interactive)
+  (term-send-raw-string "\eb"))
+(defun my-term-send-forward-word ()
+  "Move forward word in term mode."
+  (interactive)
+  (term-send-raw-string "\ef"))
+
+;; better term keybindings
+(add-hook 'ansi-term-after-hook
+  (lambda ()
+    ;; char-mode-map
+    (define-key term-raw-map (kbd "C-y") 'term-paste)
+    (define-key term-raw-map (kbd "C-c C-c") 'term-interrupt-subjob)
+    (define-key term-raw-map (kbd "C-s") 'isearch-forward)
+    (define-key term-raw-map (kbd "C-r") 'isearch-backward)
+    ; I don't really like these, means I have to use arrows to scoll history
+    ;(define-key term-raw-map (kbd "C-p") 'previous-line)
+    ;(define-key term-raw-map (kbd "C-n") 'next-line)
+    (define-key term-raw-map (kbd "M-f") 'my-term-send-forward-word)
+    (define-key term-raw-map (kbd "M-b") 'my-term-send-backward-word)
+    (define-key term-raw-map (kbd "C-c C-j") 'my-term-line-mode)
+    (define-key term-raw-map (kbd "M-DEL") 'term-send-backward-kill-word)
+    (define-key term-raw-map (kbd "M-d") 'term-send-forward-kill-word)
+    (define-key term-raw-map (kbd "C-r") 'term-send-reverse-search-history)
+    (define-key term-raw-map (kbd "M-w") 'kill-ring-save)
+    ;; line-mode map
+    (define-key term-mode-map (kbd "C-c C-k") 'my-term-char-mode)
+    ))
+(defadvice ansi-term (after ansi-term-after-advice (arg))
+  "Run hook as after advice for \"ansi-term\"."
+  (run-hooks 'ansi-term-after-hook))
+(ad-activate 'ansi-term)
+
+;; could have just set a variable, but maybe I will expand this
+(defun my-ansi-term ()
+  "My \"ansi-term\" function."
+  (interactive)
+  (ansi-term "/bin/bash"))
+(global-set-key [f6] 'my-ansi-term)
+
+(require-package 'rainbow-mode)
 ;;----------------------------------------------------------------------------
 ;; - Language specific
 ;;----------------------------------------------------------------------------
@@ -740,20 +1002,27 @@ there's a region, all lines that region covers will be duplicated."
   "Hook that gets run on activation of any programming mode.")
 
 (defun turn-on-whitespace ()
+  "Turn on whitespace."
   (whitespace-mode t)
   (add-hook 'before-save-hook 'delete-trailing-whitespace))
 
-(defun turn-on-hideshow () (hs-minor-mode t))
+(defun turn-on-hideshow ()
+  "Turn on hideshow."
+  (hs-minor-mode t))
 
-(defun turn-on-linum () (linum-mode t))
+(defun turn-on-linum ()
+  "Turn on linum."
+  (linum-mode t))
 
 (defun add-watchwords ()
+  "Add watchwords."
   (font-lock-add-keywords
    nil
    '(("\\<\\(FIX\\|FIXME\\|TODO\\|BUG\\|XXX\\):"
       1 font-lock-warning-face t))))
 
 (defun bye-flyspell ()
+  "Turn off flyspell."
   (turn-off-flyspell))
 
 (add-hook 'coding-hook 'turn-on-whitespace)
@@ -761,11 +1030,16 @@ there's a region, all lines that region covers will be duplicated."
 (add-hook 'coding-hook 'turn-on-hideshow)
 ;(add-hook 'coding-hook 'turn-on-linum)
 (add-hook 'coding-hook 'bye-flyspell)
-(add-hook 'coding-hook 'autopair-mode)
+(add-hook 'coding-hook 'electric-pair-mode)
+(add-hook 'coding-hook 'electric-indent-mode)
 
 (defun run-coding-hook ()
+  "Run my coding hook."
   (interactive)
   (run-hooks 'coding-hook))
+
+(require-package 'flycheck)
+(add-hook 'after-init-hook #'global-flycheck-mode)
 
 ;; All Lisps
 ;; -----
@@ -781,7 +1055,7 @@ there's a region, all lines that region covers will be duplicated."
 
 ;; Slime
 ;; -----
-;; slime is in elpa-autoloads.  Using nrepl for clojure
+;; slime is in elpa-noload.  Using nrepl for clojure
 ;;
 ;;(require 'slime)
 ;;(require 'slime-autoloads)
@@ -811,7 +1085,9 @@ there's a region, all lines that region covers will be duplicated."
 (add-hook 'clojure-mode-hook 'run-coding-hook)
 (add-hook 'clojure-mode-hook (lambda () (paredit-mode +1)))
 (add-hook 'clojure-mode-hook (lambda () (rainbow-delimiters-mode +1)))
-(require-package 'nrepl)
+(require-package 'cider)
+;;(require-package 'nrepl)
+(require-package 'cider)
 (require 'lein)
 
 ;; Elisp
@@ -822,13 +1098,19 @@ there's a region, all lines that region covers will be duplicated."
 ;;(add-hook 'emacs-lisp-mode-hook 'turn-on-eldoc-mode) ;;this is cool, but it seems to really slow down editing
 (add-hook
  'emacs-lisp-mode-hook
- (lambda () (setq mode-name "Elisp")))
+ (lambda () (setq mode-name "el")))
 
 ;; from http://nullprogram.com/blog/2010/06/10/
 (add-hook 'ielm-mode-hook (lambda () (paredit-mode 1)))
 (defadvice ielm-eval-input (after ielm-paredit activate)
   "Begin each IELM prompt with a ParEdit parenthesis pair."
   (paredit-open-round)) ; backspace if you don't want it
+
+(defun imenu-elisp-sections ()
+  "Define section in elisp imenu."
+  (setq imenu-prev-index-position-function nil)
+  (add-to-list 'imenu-generic-expression '("Sections" "^;; - \\(.+\\)$" 1) t))
+ (add-hook 'emacs-lisp-mode-hook 'imenu-elisp-sections)
 
 ;; Text mode
 ;; ---------
@@ -857,7 +1139,7 @@ there's a region, all lines that region covers will be duplicated."
 
 
 (defun json-pretty-format ()
-  "Runs a jsonlint shell script on the region and then indents
+  "Run a jsonlint shell script on the region and then indent.
 
   jsonlint is on my path and looks like this
 #!/usr/bin/python
@@ -865,8 +1147,7 @@ import json
 import sys
 
 j = json.load(sys.stdin)
-print json.dumps(j, sort_keys=True, indent=2)
-"
+print json.dumps(j, sort_keys=True, indent=2)"
     (interactive)
     (save-excursion
         (shell-command-on-region (point-min) (point-max) "jsonlint -" (buffer-name) t)
@@ -875,6 +1156,7 @@ print json.dumps(j, sort_keys=True, indent=2)
 ;; Ruby mode
 ;; ---------
 (require 'ruby-mode)
+(require-package 'ruby-end)
 (add-to-list 'auto-mode-alist '("buildfile" . ruby-mode))
 (add-to-list 'auto-mode-alist '("\\.ru" . ruby-mode))
 (add-to-list 'auto-mode-alist '("Rakefile" . ruby-mode))
@@ -882,8 +1164,18 @@ print json.dumps(j, sort_keys=True, indent=2)
 (add-to-list 'auto-mode-alist '("Isolate" . ruby-mode))
 (add-to-list 'auto-mode-alist '("\\.autotest" . ruby-mode))
 (add-to-list 'auto-mode-alist '("\\Gemfile" . ruby-mode))
+(add-to-list 'auto-mode-alist '("\\Capfile" . ruby-mode))
+(add-to-list 'auto-mode-alist '("\\.gemspec" . ruby-mode))
+(add-to-list 'auto-mode-alist '("Guardfile" . ruby-mode))
 (setq ruby-indent-level 2)
+(add-hook 'ruby-mode-hook '(lambda ()
+                               (setq ruby-deep-arglist t)
+                               (setq ruby-deep-indent-paren nil)
+                               (setq c-tab-always-indent nil)
+                               (require 'inf-ruby)
+                               (require 'ruby-compilation)))
 (add-hook 'ruby-mode-hook 'run-coding-hook)
+(add-hook 'ruby-mode-hook 'ruby-end-mode)
 
 ;(require-package 'rvm)
 ;(rvm-use-default) ;; use rvm's default ruby for the current Emacs session
@@ -948,6 +1240,7 @@ print json.dumps(j, sort_keys=True, indent=2)
 ;; in site-lib from https://github.com/aemoncannon/ensime/downloads
 ;;(require 'ensime)
 ;;(add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
+(require-package 'ensime)
 
 (add-to-list 'auto-mode-alist '(".sbt" . scala-mode))
 
@@ -967,15 +1260,20 @@ print json.dumps(j, sort_keys=True, indent=2)
 (require 'arduino-mode) ;; in site-lisp
 (add-hook 'arduino-mode-hook 'run-coding-hook)
 
-;; Adoc mode (asciidoc)
+;; Asciidoc stuff
 ;; -------------------
-(require-package 'adoc-mode)
-(add-to-list 'auto-mode-alist (cons "\\.asc\\'" 'adoc-mode))
-(add-to-list 'auto-mode-alist (cons "\\.asciidoc\\'" 'adoc-mode))
-;; change font face in asciidoc files
-(add-hook 'adoc-mode-hook (lambda() (buffer-face-mode t)))
-;; turn on spellcheck
-(add-hook 'adoc-mode-hook 'turn-on-flyspell)
+(add-to-list 'load-path (concat site-lisp-dir "/doc-mode-1.1"))
+(autoload 'doc-mode "doc-mode" nil t)
+(add-to-list 'auto-mode-alist '("\\.adoc$" . doc-mode))
+(add-to-list 'auto-mode-alist '("\\.asciidoc$" . doc-mode))
+(add-hook 'doc-mode-hook
+          '(lambda ()
+             (turn-off-auto-fill)
+             (turn-on-flyspell)
+             (require 'asciidoc)
+             ))
+
+
 
 ;; XML mode
 ;; --------
@@ -991,7 +1289,7 @@ print json.dumps(j, sort_keys=True, indent=2)
 (add-hook 'nxml-mode-hook 'run-coding-hook)
 
 (defun nxml-pretty-format ()
-  "Function to format the current selected region
+  "Function to format the current selected region.
 
   calls xmllint in a shell"
     (interactive)
@@ -1000,9 +1298,38 @@ print json.dumps(j, sort_keys=True, indent=2)
         (nxml-mode)
         (indent-region begin end)))
 
+;; autocomplete tags on </
+(setq nxml-slash-auto-complete-flag t)
+
 ;; Thrift mode
 ;; lifted from https://gist.github.com/2470924
 (require 'thrift-mode)
 (add-hook 'thift-mode-hook 'run-coding-hook)
-;; TODO
-;; autocomplete
+
+;; Markdown mode
+(require-package 'markdown-mode)
+
+;; web mode
+(require-package 'web-mode)
+(add-to-list 'auto-mode-alist '("\\.phtml\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.tpl\\.php\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.jsp\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.erb\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.mustache\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+
+;; Python
+(require-package 'jedi)
+(autoload 'jedi:setup "jedi" nil t)
+(add-hook 'python-mode-hook 'jedi:setup)
+
+(window-numbering-mode 1)
+
+;; org file sync stuff
+;; run now on startup
+(sync-org-files)
+;; and on shutdown
+(add-hook 'kill-emacs-hook 'sync-org-files)
+
+(provide 'init)
+;;; init.el ends here
