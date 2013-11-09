@@ -19,7 +19,7 @@ setup_file_link() {
     if [ ! -e "${destination}" ]; then
         ln -s "${source}" "${destination}" &&  echo "Linked file ${source} to ${destination}"
     else
-        echo "ERROR: File ${source} already exists"
+        echo "ERROR: File ${destination} already exists"
     fi
 }
 
@@ -29,7 +29,7 @@ setup_dir_link() {
     if [ ! -d "${destination}" ]; then
         ln -s "${source}" "${destination}" && echo "Linked directory ${source} to ${destination}"
     else
-        echo "ERROR: Directory ${source} already exists"
+        echo "ERROR: Directory ${destination} already exists"
     fi
 }
 # create backup dir if it doesn't exist
