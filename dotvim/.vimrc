@@ -15,7 +15,7 @@ set clipboard=unnamed
 " set paste "causes issues with vim-endwise in the terminal
 set ttymouse=xterm
 
-set background=dark
+set background=light
 colors vividchalk
 
 set tabstop=2
@@ -61,7 +61,7 @@ map <F2> :NERDTreeToggle \| :silent NERDTreeMirror<CR>
 
 " gpg stuff
 let g:GPGPreferArmor=1
-let g:GPGDefaultRecipients=["mjwall@gmail.com"]
+let g:GPGDefaultRecipients=["drew.farris@gmail.com"]
 
 " journal stuff
 let g:journal_directory='~/notes'
